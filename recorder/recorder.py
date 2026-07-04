@@ -6,9 +6,25 @@ from PIL import Image
 import json
 from pathlib import Path
 import pandas as pd
+import questionary
 
-def start_recording(camera,left=0,top=0,right=1920,bottom=1080):
-    camera.start(region=(left,top,right,bottom), target_fps=60)
+def choose_resolution():
+    resolution_map={
+        "1080p":0,
+        "1440p":1,
+        "4K":2,
+    }
+    selected=questionary.select(
+        "Choose resolution:",
+        choices=list(resolution_map.keys())
+    ).ask()
+    return {
+        "name": selected,
+        "id": resolution_map[selected]
+    }
+
+def start_recording(camera,left=0,top=0,right=1920,bottom=1080,fps=60):
+    camera.start(region=(left,top,right,bottom), target_fps=fps)
     print("Recording started...")
 
 
@@ -17,36 +33,42 @@ def stop_recording(camera):
     print("Recording stopped.")
 
 def read_data(ROOT):
-    resolution=int(input("Press 1 for 1080p and 2 for 1440p and 3 for 4K:"))
+    resolution=choose_resolution()
+    fps=questionary.select(
+        "Choose FPS:",
+        choices=["30","60","120"]
+    ).ask()
     game=input("Enter the game name:")
     session_name=input("Enter the session name:")
     meta={
         "game": game,
-        "resolution": 1080 if resolution==1 else 1440 if resolution==2 else 2160,
+        "resolution": resolution["name"],
+        "fps": (int(fps)),
+        "session_name": session_name
     }
     path=Path(ROOT/f"data/{session_name}/meta.json")
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path,"w") as f:
         json.dump(meta,f,indent=4)
-    return resolution, session_name
+    return resolution, fps, session_name
 
 
 def main():
+    id_to_resolution={
+        0: (1920,1080),
+        1: (2560,1440),
+        2: (3840,2160)
+    }
     ROOT=Path(__file__).resolve().parents[1]
-    resolution, session_name=read_data(ROOT)
+    resolution, fps, session_name=read_data(ROOT)
 
     camera=dxcam.create(
         backend="dxgi",
         processor_backend="cv2" 
     )
-    if resolution==1:
-        start_recording(camera,right=1920,bottom=1080)
-    elif resolution==2:
-        start_recording(camera,right=2560,bottom=1440)
-    else:
-        start_recording(camera,right=3840,bottom=2160)
-    id=0
+    start_recording(camera,left=0,top=0,right=id_to_resolution[resolution["id"]][0],bottom=id_to_resolution[resolution["id"]][1],fps=int(fps))
     df_image_timestamps=pd.DataFrame(columns=["frame_id","timestamp"])
+    id=0
 
     while True:
         frame,frame_timestamp=camera.get_latest_frame(with_timestamp=True)
