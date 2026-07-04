@@ -216,3 +216,26 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+#data
+# recorded data
+data/
+
+# media
+*.wav
+*.mp4
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+
+# model weights
+*.pt
+*.pth
+*.onnx
+
+# python stuff
+.venv/
+__pycache__/
+*.pyc
